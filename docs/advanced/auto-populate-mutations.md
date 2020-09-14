@@ -1,6 +1,6 @@
 ---
 title: Auto-populate Mutations
-order: 3
+order: 8
 ---
 
 # Automatically populating Mutations
@@ -28,12 +28,12 @@ Afterwards we can set the `populateExchange` up by adding it to our list of `exc
 client options.
 
 ```ts
-import { createClient, dedupExchange, populateExchange, fetchExchange } from '@urql/core';
-import { populateExchange } from '@urql/exchange-graphcache';
+import { createClient, dedupExchange, fetchExchange } from '@urql/core';
+import { populateExchange } from '@urql/exchange-populate';
 
 const client = createClient({
   // ...
-  exchanges: [dedupExchange, populateExchange, cacheExchange, fetchExchange],
+  exchanges: [dedupExchange, populateExchange({ schema }), cacheExchange, fetchExchange],
 });
 ```
 
@@ -42,6 +42,9 @@ The `populateExchange` should be placed in front of the `cacheExchange`, especia
 own. It should also be placed after the `dedupExchange` to avoid unnecessary work.
 
 Adding the `populateExchange` now enables us to use the `@populate` directive in our mutations.
+
+The `schema` option is the introspection result for your backend graphql schema, more information
+about how to get your schema can be found [in the "Schema Awareness" Page of the Graphcache documentation.](../graphcache/schema-awareness.md#getting-your-schema).
 
 ## Example usage
 

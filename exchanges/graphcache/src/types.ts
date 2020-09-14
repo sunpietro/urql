@@ -95,9 +95,6 @@ export interface Cache {
   /** inspectFields() retrieves all known fields for a given entity */
   inspectFields(entity: Data | string | null): FieldInfo[];
 
-  /** @deprecated Use invalidate() instead */
-  invalidateQuery(query: DocumentNode, variables?: Variables): void;
-
   /** invalidate() invalidates an entity or a specific field of an entity */
   invalidate(entity: Data | string, fieldName?: string, args?: Variables): void;
 
@@ -125,13 +122,19 @@ export interface Cache {
   ): void;
 }
 
+type ResolverResult =
+  | DataField
+  | (DataFields & { __typename?: string })
+  | null
+  | undefined;
+
 // Cache resolvers are user-defined to overwrite an entity field result
 export type Resolver = (
   parent: Data,
   args: Variables,
   cache: Cache,
   info: ResolveInfo
-) => DataField | undefined;
+) => ResolverResult;
 
 export interface ResolverConfig {
   [typeName: string]: {
@@ -177,9 +180,20 @@ export interface SerializedEntries {
   [key: string]: string | undefined;
 }
 
+export interface SerializedRequest {
+  query: string;
+  variables?: object;
+}
+
 export interface StorageAdapter {
-  read(): Promise<SerializedEntries>;
-  write(data: SerializedEntries): Promise<void>;
+  readData(): Promise<SerializedEntries>;
+  writeData(delta: SerializedEntries): Promise<any>;
+  readMetadata?(): Promise<null | SerializedRequest[]>;
+  writeMetadata?(json: SerializedRequest[]): void;
+  onOnline?(cb: () => void): any;
 }
 
 export type Dependencies = Record<string, true>;
+
+/** The type of cache operation being executed. */
+export type OperationType = 'read' | 'write';

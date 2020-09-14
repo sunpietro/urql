@@ -11,7 +11,7 @@
   <br />
   <br />
   <a href="https://circleci.com/gh/FormidableLabs/urql">
-    <img alt="Test Status" src="https://badgen.net/github/status/FormidableLabs/urql/master/ci/circleci?label=circleci" />
+    <img alt="Test Status" src="https://badgen.net/github/status/FormidableLabs/urql/main/ci/circleci?label=circleci" />
   </a>
   <a href="https://github.com/FormidableLabs/urql#maintenance-status">
     <img alt="Maintenance Status" src="https://badgen.net/badge/maintenance/active/green" />
@@ -58,12 +58,12 @@ when you first get started:
 - **[Main Concepts](https://formidable.com/open-source/urql/docs/concepts/)** — explains how `urql` functions and is built and covers GraphQL clients in general, on the ["Philosophy" page](https://formidable.com/open-source/urql/docs/concepts/philosophy).
 - **[Advanced](https://formidable.com/open-source/urql/docs/advanced/)** — covers more uncommon use-cases and things you don't immediately need when getting started.
 - **[Graphcache](https://formidable.com/open-source/urql/docs/graphcache/)** — documents ["Normalized Caching" support](https://formidable.com/open-source/urql/docs/graphcache/normalized-caching/) which enables more complex apps and use-cases.
-- **[API](https://formidable-com-urql-staging-595.surge.sh/docs/api/)** — the API documentation for each individual package.
+- **[API](https://formidable.com/open-source/urql/docs/api/)** — the API documentation for each individual package.
 
 _You can find the raw markdown files inside this repository's `docs` folder._
 
 ## Maintenance Status
 
-**Active:** Formidable is actively working on this project, and we expect to continue for work for the foreseeable future. Bug reports, feature requests and pull requests are welcome.
+**Active:** Formidable is actively working on this project, and we expect to continue work on this project for the foreseeable future. Bug reports, feature requests and pull requests are welcome.
 
 <img width="100%" src="docs/assets/urql-spoiler.png" />

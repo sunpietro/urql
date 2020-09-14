@@ -4,7 +4,7 @@ import { Exchange, OperationResult, Operation } from '../types';
 import { CombinedError } from '../utils';
 
 export interface SerializedResult {
-  data?: any;
+  data?: string | undefined; // JSON string of data
   error?: {
     graphQLErrors: Array<Partial<GraphQLError> | string>;
     networkError?: string;
@@ -35,7 +35,11 @@ const serializeResult = ({
   data,
   error,
 }: OperationResult): SerializedResult => {
-  const result: SerializedResult = { data, error: undefined };
+  const result: SerializedResult = {
+    data: JSON.stringify(data),
+    error: undefined,
+  };
+
   if (error) {
     result.error = {
       graphQLErrors: error.graphQLErrors.map(error => {
@@ -59,10 +63,11 @@ const deserializeResult = (
   operation: Operation,
   result: SerializedResult
 ): OperationResult => {
-  const { error, data } = result;
+  const { error, data: dataJson } = result;
+
   const deserialized: OperationResult = {
     operation,
-    data,
+    data: dataJson ? JSON.parse(dataJson) : undefined,
     extensions: undefined,
     error: error
       ? new CombinedError({
@@ -83,6 +88,19 @@ const deserializeResult = (
 /** The ssrExchange can be created to capture data during SSR and also to rehydrate it on the client */
 export const ssrExchange = (params?: SSRExchangeParams): SSRExchange => {
   const data: SSRData = {};
+
+  // On the client-side, we delete results from the cache as they're resolved
+  // this is delayed so that concurrent queries don't delete each other's data
+  const invalidateQueue: number[] = [];
+  const invalidate = (result: OperationResult) => {
+    invalidateQueue.push(result.operation.key);
+    if (invalidateQueue.length === 1) {
+      Promise.resolve().then(() => {
+        let key: number | void;
+        while ((key = invalidateQueue.shift())) delete data[key];
+      });
+    }
+  };
 
   const isCached = (operation: Operation) => {
     return !shouldSkip(operation) && data[operation.key] !== undefined;
@@ -131,12 +149,7 @@ export const ssrExchange = (params?: SSRExchangeParams): SSRExchange => {
       );
     } else {
       // On the client we delete results from the cache as they're resolved
-      cachedOps$ = pipe(
-        cachedOps$,
-        tap((result: OperationResult) => {
-          delete data[result.operation.key];
-        })
-      );
+      cachedOps$ = pipe(cachedOps$, tap(invalidate));
     }
 
     return merge([forwardedOps$, cachedOps$]);

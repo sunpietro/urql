@@ -1,5 +1,69 @@
 # Changelog
 
+## 1.1.0
+
+### Minor Changes
+
+- Add the option to reset the client on a next-urql application, by [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#894](https://github.com/FormidableLabs/urql/pull/894))
+
+### Patch Changes
+
+- Updated dependencies (See [#924](https://github.com/FormidableLabs/urql/pull/924) and [#904](https://github.com/FormidableLabs/urql/pull/904))
+  - urql@1.10.0
+
+## 1.0.2
+
+### Patch Changes
+
+- Disable suspense on the `Client` when we aren't using `react-ssr-prepass`, by [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#884](https://github.com/FormidableLabs/urql/pull/884))
+
+## 1.0.1
+
+### Patch Changes
+
+- Prevent serialization of the `Client` for `withUrqlClient` even if the target component doesn't have a `getInitialProps` method. Before this caused the client to not be initialised correctly on the client-side, by [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#857](https://github.com/FormidableLabs/urql/pull/857))
+
+## 1.0.0
+
+To migrate to the new version, you will now have to pass a single function argument, instead
+of two arguments to the `withUrqlClient` HOC helper. For instance, you would have to transform this:
+
+```js
+export default withUrqlClient(
+  ctx => ({
+    url: '',
+  }),
+  ssrExchange => [dedupExchange, cacheExchange, ssrExchange, fetchExchange]
+);
+```
+
+To look like the following:
+
+```js
+export default withUrqlClient(
+  (ssrExchange, ctx) => ({
+    url: '',
+    exchanges: [dedupExchange, cacheExchange, ssrExchange, fetchExchange],
+  }),
+  { ssr: true }
+);
+```
+
+The second argument may now be used to pass `{ ssr: true }` explicitly, when you are
+wrapping a page without another `getInitialProps` method. This gives you better support
+when you implement custom methods like `getStaticProps`.
+
+### Major Changes
+
+- Change `getInitialProps` to be applied when the wrapped page `getInitialProps` or when `{ ssr: true }` is passed as a second options object. This is to better support alternative methods like `getStaticProps`. By [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#797](https://github.com/FormidableLabs/urql/pull/797))
+- Update the `withUrqlClient` function to remove the second argument formerly called `mergeExchanges` and merges it with the first argument.
+
+### Patch Changes
+
+- Reuse the ssrExchange when there is one present on the client-side, by [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#855](https://github.com/FormidableLabs/urql/pull/855))
+- Updated dependencies (See [#842](https://github.com/FormidableLabs/urql/pull/842))
+  - urql@1.9.8
+
 ## 0.3.8
 
 ### Patch Changes
@@ -144,7 +208,7 @@ https://github.com/FormidableLabs/next-urql/compare/v0.2.1...v0.2.2
 
 ## 0.2.1
 
-This release fixes a regression introduced in 0.2.0 involving circular structures created bt `withUrqlClient`'s `getInitialProps` method.
+This release fixes a regression introduced in 0.2.0 involving circular structures created by `withUrqlClient`'s `getInitialProps` method.
 
 ### Fixed
 

@@ -1,5 +1,5 @@
 ---
-title: @urql/core
+title: '@urql/core'
 order: 0
 ---
 
@@ -53,7 +53,7 @@ repeatedly in the interval you pass.
 ### client.executeSubscription
 
 This is functionally the same as `client.executeQuery`, but creates operations for subscriptions
-instead, with `operationName` set to `'mutation'`.
+instead, with `operationName` set to `'subscription'`.
 
 ### client.executeMutation
 
@@ -102,6 +102,12 @@ This is similar to [`client.query`](#clientquery), but dispatches mutations inst
 
 [Read more about how to use this API on the "Core Package"
 page.](../concepts/core-package.md#one-off-queries-and-mutations)
+
+### client.subscription
+
+This is similar to [`client.query`](#clientquery), but does not provide a `toPromise()` helper method on the streams it returns.
+
+[Read more about how to use this API on the "Subscriptions" page.](../advanced/subscriptions.md)
 
 #### client.reexecuteOperation
 
@@ -170,7 +176,7 @@ It extends the [GraphQLRequest](#graphqlrequest) type and contains these additio
 | context       | `OperationContext` | Additional metadata passed to exchange.       |
 
 > **Note:** In `urql` the `operationName` on the `Operation` isn't the actual name of an operation
-> and dervied from the GraphQL `DocumentNode`, but instead a type of operation, like `'query'` or
+> and derived from the GraphQL `DocumentNode`, but instead a type of operation, like `'query'` or
 > `'teardown'`
 
 ### RequestPolicy
@@ -328,6 +334,19 @@ and is still waiting for a result.
 
 The `fetchExchange` of type `Exchange` is responsible for sending operations of type `'query'` and
 `'mutation'` to a GraphQL API using `fetch`.
+
+### errorExchange
+
+An exchange that lets you inspect errors. This can be useful for logging, or reacting to
+different types of errors (e.g. logging the user out in case of a permission error).
+
+```ts
+errorExchange({
+  onError: (error: CombinedError, operation: Operation) => {
+    console.log('An error!', error);
+  },
+});
+```
 
 ## Utilities
 

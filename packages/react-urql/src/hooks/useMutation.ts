@@ -7,6 +7,7 @@ import {
   OperationContext,
   CombinedError,
   createRequest,
+  Operation,
 } from '@urql/core';
 
 import { useClient } from '../context';
@@ -18,6 +19,7 @@ export interface UseMutationState<T> {
   data?: T;
   error?: CombinedError;
   extensions?: Record<string, any>;
+  operation?: Operation;
 }
 
 export type UseMutationResponse<T, V> = [
@@ -28,9 +30,9 @@ export type UseMutationResponse<T, V> = [
   ) => Promise<OperationResult<T>>
 ];
 
-export const useMutation = <T = any, V = object>(
+export function useMutation<T = any, V = object>(
   query: DocumentNode | string
-): UseMutationResponse<T, V> => {
+): UseMutationResponse<T, V> {
   const isMounted = useRef(true);
   const client = useClient();
 
@@ -54,6 +56,7 @@ export const useMutation = <T = any, V = object>(
             data: result.data,
             error: result.error,
             extensions: result.extensions,
+            operation: result.operation,
           });
         }
         return result;
@@ -69,4 +72,4 @@ export const useMutation = <T = any, V = object>(
   }, []);
 
   return [state, executeMutation];
-};
+}

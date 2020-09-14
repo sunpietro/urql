@@ -44,9 +44,11 @@ default.
   API, allowing an app to render everything that's cached before receiving all missing data. It also
   allows _Graphcache_ to output more helpful warnings and to handle interfaces and enums correctly
   without heuristics.
-- 📡 **Offline support** (work in progress) _Graphcache_ can persist and rehydrate its entire state,
+- 📡 [**Offline support**](./offline.md) _Graphcache_ can persist and rehydrate its entire state,
   allowing an offline application to be built that is able to execute queries against the cache
   although the device is offline.
+- 🐛 [**Errors and warnings**](./errors.md). All potential errors are documented with information on
+  how you may be able to fix them.
 
 ## Installation and Setup
 
@@ -64,7 +66,7 @@ npm install --save @urql/exchange-graphcache
 
 The package exports the `cacheExchange` which replaces the default `cacheExchange` in `@urql/core`.
 This new `cacheExchange` must be instantiated using some options, which are used to customise
-_Graphcache_ as introduced in the ["Features" section above.](#features) Howver, you can get started
+_Graphcache_ as introduced in the ["Features" section above.](#features) However, you can get started
 without passing any options.
 
 ```js

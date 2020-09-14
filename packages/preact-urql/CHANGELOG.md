@@ -1,5 +1,32 @@
 # @urql/preact
 
+## 1.2.1
+
+### Patch Changes
+
+- Handle a bug in Preact where the current request might be `null`, by [@jlengstorf](https://github.com/jlengstorf) (See [#944](https://github.com/FormidableLabs/urql/pull/944))
+- Updated dependencies (See [#947](https://github.com/FormidableLabs/urql/pull/947), [#962](https://github.com/FormidableLabs/urql/pull/962), and [#957](https://github.com/FormidableLabs/urql/pull/957))
+  - @urql/core@1.13.0
+
+## 1.2.0
+
+### Minor Changes
+
+- Add the operation to the query, mutation and subscription result, by [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#924](https://github.com/FormidableLabs/urql/pull/924))
+
+### Patch Changes
+
+- Updated dependencies (See [#911](https://github.com/FormidableLabs/urql/pull/911) and [#908](https://github.com/FormidableLabs/urql/pull/908))
+  - @urql/core@1.12.3
+
+## 1.1.8
+
+### Patch Changes
+
+- Upgrade to a minimum version of wonka@^4.0.14 to work around issues with React Native's minification builds, which use uglify-es and could lead to broken bundles, by [@kitten](https://github.com/kitten) (See [#842](https://github.com/FormidableLabs/urql/pull/842))
+- Updated dependencies (See [#838](https://github.com/FormidableLabs/urql/pull/838) and [#842](https://github.com/FormidableLabs/urql/pull/842))
+  - @urql/core@1.12.0
+
 ## 1.1.7
 
 ### Patch Changes

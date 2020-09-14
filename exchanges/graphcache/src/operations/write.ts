@@ -22,6 +22,7 @@ import {
   Link,
   OperationRequest,
   Dependencies,
+  EntityField,
 } from '../types';
 
 import {
@@ -36,7 +37,7 @@ import {
 import * as InMemoryData from '../store/data';
 import {
   Context,
-  SelectionIterator,
+  makeSelectionIterator,
   ensureData,
   makeContext,
   updateContext,
@@ -54,7 +55,7 @@ export const write = (
   data: Data,
   key?: number
 ): WriteResult => {
-  initDataState(store.data, key || null);
+  initDataState('write', store.data, key || null);
   const result = startWrite(store, request, data);
   clearDataState();
   return result;
@@ -95,7 +96,7 @@ export const writeOptimistic = (
   request: OperationRequest,
   key: number
 ): WriteResult => {
-  initDataState(store.data, key, true);
+  initDataState('write', store.data, key, true);
 
   const operation = getMainOperation(request.query);
   const result: WriteResult = {
@@ -137,7 +138,7 @@ export const writeOptimistic = (
 export const writeFragment = (
   store: Store,
   query: DocumentNode,
-  data: Data,
+  data: Partial<Data>,
   variables?: Variables
 ) => {
   const fragments = getFragments(query);
@@ -152,8 +153,8 @@ export const writeFragment = (
   }
 
   const typename = getFragmentTypeName(fragment);
-  const writeData = { __typename: typename, ...data } as Data;
-  const entityKey = store.keyOfEntity(writeData);
+  const dataToWrite = { __typename: typename, ...data } as Data;
+  const entityKey = store.keyOfEntity(dataToWrite);
   if (!entityKey) {
     return warn(
       "Can't generate a key for writeFragment(...) data.\n" +
@@ -176,7 +177,7 @@ export const writeFragment = (
     entityKey
   );
 
-  writeSelection(ctx, entityKey, getSelectionSet(fragment), writeData);
+  writeSelection(ctx, entityKey, getSelectionSet(fragment), dataToWrite);
 
   if (process.env.NODE_ENV !== 'production') {
     popDebugNode();
@@ -198,7 +199,7 @@ const writeSelection = (
     InMemoryData.writeRecord(entityKey, '__typename', typename);
   }
 
-  const iter = new SelectionIterator(
+  const iter = makeSelectionIterator(
     typename,
     entityKey || typename,
     select,
@@ -267,7 +268,11 @@ const writeSelection = (
       }
     } else if (entityKey && !isRoot) {
       // This is a leaf node, so we're setting the field's value directly
-      InMemoryData.writeRecord(entityKey || typename, fieldKey, fieldValue);
+      InMemoryData.writeRecord(
+        entityKey || typename,
+        fieldKey,
+        fieldValue as EntityField
+      );
     }
 
     if (isRoot) {

@@ -1,5 +1,9 @@
-import { Store } from '../store';
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 import gql from 'graphql-tag';
+import { minifyIntrospectionQuery } from '@urql/introspection';
+
+import { Store } from '../store';
 import { write } from './write';
 import { query } from './query';
 
@@ -24,8 +28,12 @@ describe('Query', () => {
   let schema, store, alteredRoot;
 
   beforeAll(() => {
-    schema = require('../test-utils/simple_schema.json');
-    alteredRoot = require('../test-utils/altered_root_schema.json');
+    schema = minifyIntrospectionQuery(
+      require('../test-utils/simple_schema.json')
+    );
+    alteredRoot = minifyIntrospectionQuery(
+      require('../test-utils/altered_root_schema.json')
+    );
   });
 
   beforeEach(() => {
@@ -41,8 +49,6 @@ describe('Query', () => {
         ],
       }
     );
-
-    jest.resetAllMocks();
   });
 
   it('test partial results', () => {
@@ -155,6 +161,9 @@ describe('Query', () => {
       __typename: 'Query',
       todos: [{ __typename: 'Todo', id: '0', text: 'Solve bug' }],
     });
+
+    expect(console.warn).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('should respect altered root types', () => {
@@ -186,6 +195,9 @@ describe('Query', () => {
       __typename: 'query_root',
       todos: [{ __typename: 'Todo', id: '0', text: 'Solve bug' }],
     });
+
+    expect(console.warn).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('should allow subsequent read when first result was null', () => {
@@ -247,5 +259,8 @@ describe('Query', () => {
       __typename: 'query_root',
       todos: [null],
     });
+
+    expect(console.warn).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
   });
 });

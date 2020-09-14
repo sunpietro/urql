@@ -5,27 +5,37 @@ order: 2
 
 # Computed Queries
 
-When dealing with data we could have special cases where we want to format a date
-or if we for instance have a list of a certain entity in cache and next we want
-to query a specific entity, chances are this will already be (partially) available
-in that list.
+When dealing with data we could have special cases where we want to transform
+the data between the API and frontend logic, for example:
+
+- alter the format of a date, perhaps from a UNIX timestamp to a `Date` object.
+- if we have a list of a certain entity in the cache and next we want to query a
+  specific entity, chances are this will already be (partially) available in the
+  cache's list.
 
 These cases can be solved with the concept of `resolvers`.
 
 ## Resolvers
 
-Let's look at how we can introduce these `resolvers` to our `cacheExchange`.
+Let's look at how we can introduce these `resolvers` to our Graphcache exchange.
+Let's say we have a `Todo` type with an `updatedAt` property which is a UNIX timestamp.
 
 ```js
+import { cacheExchange } from '@urql/exchange-graphcache';
+
 const cache = cacheExchange({
   resolvers: {
-    Todo: { updatedAt: ({ date }) => Date.format(date) },
+    Todo: {
+      updatedAt(parent, args, cache, info) {
+        return new Date(parent.updatedAt);
+      },
+    },
   },
 });
 ```
 
 Now when we query our `todos` every time we encounter an object with `Todo`
-as the `__typename` it will format the `updatedAt` property. This way we
+as the `__typename` it will convert the `parent.updatedAt` property to a `Date`. This way we
 can effectively change how we handle a certain property on an entity.
 
 Let's look at the arguments passed to `resolvers` to get a better sense of
@@ -33,7 +43,7 @@ what we can do, there are four arguments (these are in order):
 
 - `parent` – The original entity in the cache. In the example above, this
   would be the full `Todo` object.
-- `arguments` – The arguments used in this field.
+- `args` – The arguments used in this field.
 - `cache` – This is the normalized cache. The cache provides us with `resolve`, `readQuery` and `readFragment` methods,
   read more about this [below](#resolve).
 - `info` – This contains the fragments used in the query and the field arguments in the query.
@@ -73,7 +83,7 @@ todos: [
 ];
 ```
 
-Let's get the `author` for a todo.
+Lets get the `author` for a todo.
 
 ```js
 const parent = {
@@ -150,7 +160,7 @@ const data = cache.readFragment(
 > [graphql-tag](https://github.com/apollographql/graphql-tag) because `writeFragment` only accepts
 > GraphQL `DocumentNode`s as inputs, and not strings.
 
-This way we'll get the Todo with id 1 and the relevant data we are askng for in the
+This way we'll get the Todo with id 1 and the relevant data we are asking for in the
 fragment.
 
 ## Pagination
@@ -187,7 +197,7 @@ your queries.
 Given you have a [relay-compatible schema](https://facebook.github.io/relay/graphql/connections.htm)
 on your backend we offer the possibility of endless data resolving.
 This means that when you fetch the next page in your data
-received in `useQuery` you'll see the previous pages as well. This is usefull for
+received in `useQuery` you'll see the previous pages as well. This is useful for
 endless scrolling.
 
 You can achieve this by importing `relayPagination` from `@urql/exchange-graphcache/extras`.
@@ -226,6 +236,11 @@ last: 1, before: c => node 89, startCursor: d
 
 With inwards merging the nodes will be in this order: `[1, 2, ..., 89, 99]`
 And with outwards merging: `[..., 89, 99, 1, 2, ...]`
+
+The helper happily supports schemata that return nodes rather than
+individually-cursored edges. For each paginated type, you must either
+always request nodes, or always request edges -- otherwise the lists
+cannot be stiched together.
 
 ### Reading on
 

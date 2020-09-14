@@ -60,14 +60,14 @@ const Root = () => (
   </div>
 );
 
-export default withUrqlClient({ url: 'https://graphql-pokemon.now.sh' })(Root);
+export default withUrqlClient(() => ({ url: 'https://graphql-pokemon.now.sh' }))(Root);
 ```
 
 Read more below in the [API](#API) section to learn more about the arguments that can be passed to `withUrqlClient`.
 
 #### Integration with `_app.js`
 
-Next allows you to override the root of your application using a special page called [`_app.js`](https://nextjs.org/docs#custom-app). If you want to have all GraphQL requests in your application fetched on the server-side, you _could_ wrap the component exported by `_app.js` in `withUrqlClient`. However, be aware that this will opt you out of [automatic static optimization](https://nextjs.org/docs#automatic-static-optimization) for your entire application. In general, it's recommended practice to only use `withUrqlClient` on the pages that have GraphQL operations in their component tree. Read more in the [Caveats](#Caveats) section. Check out our example for using `next-urql` with `_app.js` [here](/examples/2-with-_app.js/README.md).
+Next allows you to override the root of your application using a special page called [`_app.js`](https://nextjs.org/docs#custom-app). If you want to have all GraphQL requests in your application fetched on the server-side, you _could_ wrap the component exported by `_app.js` in `withUrqlClient`. However, be aware that this will opt you out of [automatic static optimization](https://nextjs.org/docs#automatic-static-optimization) for your entire application. In general, it's recommended practice to only use `withUrqlClient` on the pages that have GraphQL operations in their component tree. Read more in the [Caveats](#Caveats) section. Check out our example for using `next-urql` with `_app.js` [here](./examples/2-with-_app.js/README.md).
 
 ### API
 
@@ -78,9 +78,7 @@ Next allows you to override the root of your application using a special page ca
 The `clientOptions` argument is required. It represents all of the options you want to enable on your `urql` Client instance. It has the following union type:
 
 ```typescript
-type NextUrqlClientConfig =
-  | Omit<ClientOptions, 'exchanges' | 'suspense'>
-  | ((ctx: NextPageContext) => Omit<ClientOptions, 'exchanges' | 'suspense'>);
+type NextUrqlClientConfig = (ssrExchange: SSRExchange, ctx?: NextPageContext) => ClientOptions;
 ```
 
 The `ClientOptions` `interface` comes from `urql` itself and has the following type:
@@ -93,7 +91,7 @@ interface ClientOptions {
   fetchOptions?: RequestInit | (() => RequestInit);
   /** An alternative fetch implementation. */
   fetch?: typeof fetch;
-  /** The exchanges used by the Client. See mergeExchanges below for information on modifying exchanges in next-urql. */
+  /** The exchanges used by the Client. */
   exchanges?: Exchange[];
   /** A flag to enable suspense on the server. next-urql handles this for you. */
   suspense?: boolean;
@@ -106,22 +104,10 @@ interface ClientOptions {
 }
 ```
 
-This means you have two options for creating your `urql` Client. The first involves just passing the options as an object directly:
+You can create a client by passing a function which receives the `ssrExchange` and Next's context object, `ctx`, as arguments and returns `urql`'s Client options. This is helpful if you need to access some part of Next's context to instantiate your Client options. **Note: `ctx` is _only_ available on the initial server-side render and _not_ on client-side navigation**. This is necessary to allow for different Client configurations between server and client.
 
 ```typescript
-withUrqlClient({
-  url: 'http://localhost:3000',
-  fetchOptions: {
-    referrer: 'no-referrer',
-    redirect: 'follow',
-  },
-});
-```
-
-The second involves passing a function, which receives Next's context object, `ctx`, as an argument and returns `urql`'s Client options. This is helpful if you need to access some part of Next's context to instantiate your Client options. **Note: `ctx` is _only_ available on the initial server-side render and _not_ on client-side navigation**. This is necessary to allow for different Client configurations between server and client.
-
-```typescript
-withUrqlClient(ctx => ({
+withUrqlClient((_ssrExchange, ctx) => ({
   url: 'http://localhost:3000',
   fetchOptions: {
     headers: {
@@ -133,17 +119,27 @@ withUrqlClient(ctx => ({
 }));
 ```
 
-In client-side SPAs using `urql`, you typically configure the Client yourself and pass it as the `value` prop to `urql`'s context `Provider`. `withUrqlClient` handles setting all of this up for you under the hood. By default, you'll be opted into server-side `Suspense` and have the necessary `exchanges` set up for you, including the [`ssrExchange`](https://formidable.com/open-source/urql/docs/api/#ssrexchange-exchange-factory). If you need to customize your exchanges beyond the defaults `next-urql` provides, use the second argument to `withUrqlClient`, `mergeExchanges`.
+In client-side SPAs using `urql`, you typically configure the Client yourself and pass it as the `value` prop to `urql`'s context `Provider`. `withUrqlClient` handles setting all of this up for you under the hood. By default, you'll be opted into server-side `Suspense` and have the necessary `exchanges` set up for you, including the [`ssrExchange`](https://formidable.com/open-source/urql/docs/api/#ssrexchange-exchange-factory).
 
-#### `mergeExchanges` (Optional)
+### Resetting the client instance
 
-The `mergeExchanges` argument is optional. This is a function that takes the `ssrExchange` created by `next-urql` as its only argument and allows you to configure your exchanges as you wish. It has the following type signature:
+In rare scenario's you possibly will have to reset the client instance (reset all cache, ...), this is an uncommon scenario
+and we consider it "unsafe" so evaluate this carefully for yourself.
 
-```typescript
-(ssrExchange: SSRExchange) => Exchange[]
-```
+When this does seem like the appropriate solution any component wrapped with `withUrqlClient` will receive the `resetUrqlClient`
+property, when invoked this will create a new top-level client and reset all prior operations.
 
-By default, `next-urql` will incorprate the `ssrExchange` into your `exchanges` array in the correct location (after any other caching exchanges, but _before_ the `fetchExchange` – read more [here](https://formidable.com/open-source/urql/docs/basics/#setting-up-the-client)). Use this argument if you want to configure your Client with additional custom `exchanges`, or access the `ssrCache` directly to extract or restore data from its cache.
+#### `exchanges`
+
+When you're using `withUrqlClient` and you don't return an `exchanges` property we'll assume you wanted the default exchanges, these contain: `dedupExchange`, `cacheExchange`, `ssrExchange` (the one you received as a first argument) and the `fetchExchange`.
+
+When you yourself want to pass exchanges don't forget to include the `ssrExchange` you received as the first argument.
+
+#### `withUrqlClientOptions`
+
+The second argument for `withUrqlClient` is an options object, this contains one `boolean` property named `ssr`, you can use this to tell
+`withUrqlClient` that the wrapped component does not use `getInitialProps` but the children of this wrapped component do. This opts you into
+`ssr` for these children.
 
 ### Different Client configurations on the client and the server
 
@@ -223,4 +219,7 @@ You can see simple example projects using `next-urql` in the `examples` director
 
 ### Caveats
 
-`withUrqlClient` implements Next's unique `getInitialProps` method under the hood. This means that any page containing a component wrapped by `withUrqlClient` will be opted out of [automatic static optimization](https://nextjs.org/docs#automatic-static-optimization). Automatic static optimization was added in Next v9, so you shouldn't worry about this if using an earlier version of Next. This is **not** unique to `next-urql` – any implementation of `getInitialProps` by any component in your application will cause Next to opt out of automatic static optimization.
+Using `withUrqlClient` on a page that has `getInitialProps` will opt that component and it's children into a prepass that does a first pass of all queries, when that
+component has children using `getInitialProps` but that component itself is not and you want to opt in to this behavior you'll have to set the second argument of
+`withUrqlClient`, this means `withUrqlClient(() => clientOptiosn, { ssr:true })`.
+This measure is available so we can support `getStaticProps`, ...

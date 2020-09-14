@@ -1,7 +1,7 @@
 // These are guards that are used throughout the codebase to warn or error on
 // unexpected behaviour or conditions.
 // Every warning and error comes with a number that uniquely identifies them.
-// You can read more about the messages themselves in `docs/help.md`
+// You can read more about the messages themselves in `docs/graphcache/errors.md`
 
 import { Kind, ExecutableDefinitionNode, InlineFragmentNode } from 'graphql';
 
@@ -23,11 +23,18 @@ export type ErrorCode =
   | 16
   | 17
   | 18
-  | 19;
+  | 19
+  | 20
+  | 21
+  | 22
+  | 23
+  | 24
+  | 25;
 
 type DebugNode = ExecutableDefinitionNode | InlineFragmentNode;
 
-const helpUrl = '\nhttps://bit.ly/38yWDau#';
+// URL unfurls to https://formidable.com/open-source/urql/docs/graphcache/errors/
+const helpUrl = '\nhttps://bit.ly/2XbVrpR#';
 const cache = new Set<string>();
 
 export const currentDebugStack: string[] = [];

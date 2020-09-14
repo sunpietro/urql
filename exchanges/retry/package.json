@@ -1,6 +1,6 @@
 {
   "name": "@urql/exchange-retry",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "An exchange for operation retry support in urql",
   "sideEffects": false,
   "homepage": "https://formidable.com/open-source/urql/docs/",
@@ -52,7 +52,7 @@
   },
   "devDependencies": {
     "@types/react": "^16.9.19",
-    "graphql": "^15.0.0",
+    "graphql": "^15.1.0",
     "react": "^16.13.0",
     "react-dom": "^16.13.0"
   },
@@ -60,8 +60,8 @@
     "graphql": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0"
   },
   "dependencies": {
-    "@urql/core": ">=1.11.7",
-    "wonka": "^4.0.10"
+    "@urql/core": ">=1.12.0",
+    "wonka": "^4.0.14"
   },
   "publishConfig": {
     "access": "public"

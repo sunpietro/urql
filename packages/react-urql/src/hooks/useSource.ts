@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
-import { useMemo, useEffect, useState, useRef } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 
 import {
   Source,
@@ -18,9 +18,7 @@ import { useClient } from '../context';
 
 let currentInit = false;
 
-export const useSource = <T>(source: Source<T>, init: T): T => {
-  const isMounted = useRef(true);
-
+export function useSource<T>(source: Source<T>, init: T): T {
   const [state, setState] = useState(() => {
     currentInit = true;
     let initialValue = init;
@@ -38,16 +36,10 @@ export const useSource = <T>(source: Source<T>, init: T): T => {
   });
 
   useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
     return pipe(
       source,
       subscribe(value => {
-        if (!currentInit && isMounted.current) {
+        if (!currentInit) {
           setState(value);
         }
       })
@@ -55,9 +47,9 @@ export const useSource = <T>(source: Source<T>, init: T): T => {
   }, [source]);
 
   return state;
-};
+}
 
-export const useBehaviourSubject = <T>(value: T) => {
+export function useBehaviourSubject<T>(value: T) {
   const client = useClient();
 
   const state = useMemo((): [Source<T>, (value: T) => void] => {
@@ -93,4 +85,4 @@ export const useBehaviourSubject = <T>(value: T) => {
   if (client.suspense) state[1](value);
 
   return state;
-};
+}

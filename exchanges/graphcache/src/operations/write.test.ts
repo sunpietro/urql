@@ -1,4 +1,8 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 import gql from 'graphql-tag';
+import { minifyIntrospectionQuery } from '@urql/introspection';
+
 import { write } from './write';
 import * as InMemoryData from '../store/data';
 import { Store } from '../store';
@@ -24,7 +28,9 @@ describe('Query', () => {
   let schema, store;
 
   beforeAll(() => {
-    schema = require('../test-utils/simple_schema.json');
+    schema = minifyIntrospectionQuery(
+      require('../test-utils/simple_schema.json')
+    );
   });
 
   beforeEach(() => {
@@ -42,6 +48,33 @@ describe('Query', () => {
     );
 
     jest.clearAllMocks();
+  });
+
+  it('should not crash for valid writes', async () => {
+    const VALID_TODO_QUERY = gql`
+      mutation {
+        toggleTodo {
+          id
+          text
+          complete
+        }
+      }
+    `;
+    write(
+      store,
+      { query: VALID_TODO_QUERY },
+      {
+        __typename: 'Mutation',
+        toggleTodo: {
+          __typename: 'Todo',
+          id: '0',
+          text: 'Teach',
+          complete: true,
+        },
+      }
+    );
+    expect(console.warn).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it('should warn once for invalid fields on an entity', () => {
@@ -82,7 +115,9 @@ describe('Query', () => {
       }
     );
     expect(console.warn).toHaveBeenCalledTimes(1);
-    expect((console.warn as any).mock.calls[0][0]).toMatch(/incomplete/);
+    expect((console.warn as any).mock.calls[0][0]).toMatch(
+      /The field `incomplete` does not exist on `Todo`/
+    );
   });
 
   it('should warn once for invalid fields on an entity', () => {
@@ -131,7 +166,9 @@ describe('Query', () => {
     );
 
     expect(console.warn).toHaveBeenCalledTimes(1);
-    expect((console.warn as any).mock.calls[0][0]).toMatch(/writer/);
+    expect((console.warn as any).mock.calls[0][0]).toMatch(
+      /The field `writer` does not exist on `Todo`/
+    );
   });
 
   it('should skip undefined values that are expected', () => {
@@ -146,9 +183,11 @@ describe('Query', () => {
     write(store, { query }, { field: undefined } as any);
     // Because of us writing an undefined field
     expect(console.warn).toHaveBeenCalledTimes(2);
-    expect((console.warn as any).mock.calls[0][0]).toMatch(/undefined/);
+    expect((console.warn as any).mock.calls[0][0]).toMatch(
+      /The field `field` does not exist on `Query`/
+    );
 
-    InMemoryData.initDataState(store.data, null);
+    InMemoryData.initDataState('read', store.data, null);
     // The field must still be `'test'`
     expect(InMemoryData.readRecord('Query', 'field')).toBe('test');
   });

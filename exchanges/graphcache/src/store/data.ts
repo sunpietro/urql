@@ -7,6 +7,7 @@ import {
   StorageAdapter,
   SerializedEntries,
   Dependencies,
+  OperationType,
 } from '../types';
 
 import {
@@ -18,7 +19,6 @@ import {
 
 import { makeDict } from '../helpers/dict';
 import { invariant, currentDebugStack } from '../helpers/help';
-import { scheduleTask } from './defer';
 
 type Dict<T> = Record<string, T>;
 type KeyMap<T> = Map<string, T>;
@@ -54,9 +54,9 @@ export interface InMemoryData {
   storage: StorageAdapter | null;
 }
 
+let currentOperation: null | OperationType = null;
 let currentData: null | InMemoryData = null;
 let currentDependencies: null | Dependencies = null;
-let previousDependencies: null | Dependencies = null;
 let currentOptimisticKey: null | number = null;
 let currentIgnoreOptimistic = false;
 
@@ -67,14 +67,15 @@ const makeNodeMap = <T>(): NodeMap<T> => ({
 
 /** Before reading or writing the global state needs to be initialised */
 export const initDataState = (
+  operationType: OperationType,
   data: InMemoryData,
   layerKey: number | null,
   isOptimistic?: boolean
 ) => {
+  currentOperation = operationType;
   currentData = data;
-  previousDependencies = currentDependencies;
   currentDependencies = makeDict();
-  currentIgnoreOptimistic = false;
+  currentIgnoreOptimistic = !!isOptimistic;
   if (process.env.NODE_ENV !== 'production') {
     currentDebugStack.length = 0;
   }
@@ -115,6 +116,7 @@ export const clearDataState = () => {
 
   const data = currentData!;
   const layerKey = currentOptimisticKey;
+  currentIgnoreOptimistic = false;
   currentOptimisticKey = null;
 
   // Determine whether the current operation has been a commutative layer
@@ -131,22 +133,23 @@ export const clearDataState = () => {
     }
   }
 
+  currentOperation = null;
+  currentData = null;
+  currentDependencies = null;
+  if (process.env.NODE_ENV !== 'production') {
+    currentDebugStack.length = 0;
+  }
+
   // Schedule deferred tasks if we haven't already
   if (process.env.NODE_ENV !== 'test' && !data.defer) {
     data.defer = true;
-    scheduleTask(() => {
-      initDataState(data, null);
+    Promise.resolve().then(() => {
+      initDataState('write', data, null);
       gc();
       persistData();
       clearDataState();
       data.defer = false;
     });
-  }
-
-  currentData = null;
-  currentDependencies = null;
-  if (process.env.NODE_ENV !== 'production') {
-    currentDebugStack.length = 0;
   }
 };
 
@@ -156,8 +159,20 @@ export const noopDataState = (
   layerKey: number | null,
   isOptimistic?: boolean
 ) => {
-  initDataState(data, layerKey, isOptimistic);
+  initDataState('read', data, layerKey, isOptimistic);
   clearDataState();
+};
+
+export const getCurrentOperation = (): OperationType => {
+  invariant(
+    currentOperation !== null,
+    'Invalid Cache call: The cache may only be accessed or mutated during' +
+      'operations like write or query, or as part of its resolvers, updaters, ' +
+      'or optimistic configs.',
+    2
+  );
+
+  return currentOperation;
 };
 
 /** As we're writing, we keep around all the records and links we've read or have written to */
@@ -171,16 +186,6 @@ export const getCurrentDependencies = (): Dependencies => {
   );
 
   return currentDependencies;
-};
-
-export const forkDependencies = (): Dependencies => {
-  previousDependencies = currentDependencies;
-  return (currentDependencies = makeDict());
-};
-
-export const unforkDependencies = () => {
-  currentDependencies = previousDependencies;
-  previousDependencies = null;
 };
 
 export const make = (queryRootKey: string): InMemoryData => ({
@@ -378,8 +383,9 @@ const updateDependencies = (entityKey: string, fieldKey?: string) => {
 };
 
 const updatePersist = (entityKey: string, fieldKey: string) => {
-  if (currentData!.storage)
+  if (!currentIgnoreOptimistic && currentData!.storage) {
     currentData!.persist.add(serializeKeys(entityKey, fieldKey));
+  }
 };
 
 /** Reads an entity's field (a "record") from data */
@@ -512,7 +518,8 @@ const deleteLayer = (data: InMemoryData, layerKey: number) => {
 /** Merges an optimistic layer of links and records into the base data */
 const squashLayer = (layerKey: number) => {
   // Hide current dependencies from squashing operations
-  forkDependencies();
+  const previousDependencies = currentDependencies;
+  currentDependencies = makeDict();
 
   const links = currentData!.links.optimistic[layerKey];
   if (links) {
@@ -530,7 +537,7 @@ const squashLayer = (layerKey: number) => {
     });
   }
 
-  unforkDependencies();
+  currentDependencies = previousDependencies;
   deleteLayer(currentData!, layerKey);
 };
 
@@ -550,8 +557,8 @@ export const inspectFields = (entityKey: string): FieldInfo[] => {
 
 export const persistData = () => {
   if (currentData!.storage) {
-    const entries: SerializedEntries = makeDict();
     currentIgnoreOptimistic = true;
+    const entries: SerializedEntries = makeDict();
     currentData!.persist.forEach(key => {
       const { entityKey, fieldKey } = deserializeKeyInfo(key);
       let x: void | Link | EntityField;
@@ -565,7 +572,7 @@ export const persistData = () => {
     });
 
     currentIgnoreOptimistic = false;
-    currentData!.storage.write(entries);
+    currentData!.storage.writeData(entries);
     currentData!.persist.clear();
   }
 };
@@ -575,7 +582,7 @@ export const hydrateData = (
   storage: StorageAdapter,
   entries: SerializedEntries
 ) => {
-  initDataState(data, null);
+  initDataState('read', data, null);
 
   for (const key in entries) {
     const value = entries[key];

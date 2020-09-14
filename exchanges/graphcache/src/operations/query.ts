@@ -27,6 +27,7 @@ import {
 
 import {
   Store,
+  getCurrentOperation,
   getCurrentDependencies,
   initDataState,
   clearDataState,
@@ -39,7 +40,7 @@ import { warn, pushDebugNode, popDebugNode } from '../helpers/help';
 
 import {
   Context,
-  SelectionIterator,
+  makeSelectionIterator,
   ensureData,
   makeContext,
   updateContext,
@@ -62,7 +63,7 @@ export const query = (
   request: OperationRequest,
   data?: Data
 ): QueryResult => {
-  initDataState(store.data, null);
+  initDataState('read', store.data, null);
   const result = read(store, request, data);
   clearDataState();
   return result;
@@ -116,7 +117,7 @@ const readRoot = (
     return originalData;
   }
 
-  const iter = new SelectionIterator(entityKey, entityKey, select, ctx);
+  const iter = makeSelectionIterator(entityKey, entityKey, select, ctx);
   const data = {} as Data;
   data.__typename = originalData.__typename;
 
@@ -164,7 +165,7 @@ const readRootField = (
 export const readFragment = (
   store: Store,
   query: DocumentNode,
-  entity: Data | string,
+  entity: Partial<Data> | string,
   variables?: Variables
 ): Data | null => {
   const fragments = getFragments(query);
@@ -236,6 +237,21 @@ const readSelection = (
   const isQuery = key === store.rootFields['query'];
 
   const entityKey = (result && store.keyOfEntity(result)) || key;
+  if (!isQuery && !!ctx.store.rootNames[entityKey]) {
+    warn(
+      'Invalid root traversal: A selection was being read on `' +
+        entityKey +
+        '` which is an uncached root type.\n' +
+        'The `' +
+        ctx.store.rootFields.mutation +
+        '` and `' +
+        ctx.store.rootFields.subscription +
+        '` types are special ' +
+        'Operation Root Types and cannot be read back from the cache.',
+      25
+    );
+  }
+
   const typename = !isQuery
     ? InMemoryData.readRecord(entityKey, '__typename') ||
       (result && result.__typename)
@@ -258,7 +274,7 @@ const readSelection = (
   // The following closely mirrors readSelection, but differs only slightly for the
   // sake of resolving from an existing resolver result
   data.__typename = typename;
-  const iter = new SelectionIterator(typename, entityKey, select, ctx);
+  const iter = makeSelectionIterator(typename, entityKey, select, ctx);
 
   let node: FieldNode | void;
   let hasFields = false;
@@ -285,7 +301,11 @@ const readSelection = (
     if (resultValue !== undefined && node.selectionSet === undefined) {
       // The field is a scalar and can be retrieved directly from the result
       dataFieldValue = resultValue;
-    } else if (resolvers && typeof resolvers[fieldName] === 'function') {
+    } else if (
+      getCurrentOperation() === 'read' &&
+      resolvers &&
+      typeof resolvers[fieldName] === 'function'
+    ) {
       // We have to update the information in context to reflect the info
       // that the resolver will receive
       updateContext(ctx, typename, entityKey, key, fieldName);

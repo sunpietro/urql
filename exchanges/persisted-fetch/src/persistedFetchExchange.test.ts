@@ -193,3 +193,82 @@ it('correctly generates an SHA256 hash', async () => {
     },
   });
 });
+
+it('supports a custom hash function', async () => {
+  const expected = {
+    data: {
+      test: true,
+    },
+  };
+
+  fetch.mockResolvedValueOnce({
+    json: () => expected,
+  });
+
+  const hashFn = jest.fn(() => Promise.resolve('hello'));
+
+  await pipe(
+    fromValue(queryOperation),
+    persistedFetchExchange({ generateHash: hashFn })(exchangeArgs),
+    toPromise
+  );
+
+  expect(fetch).toHaveBeenCalledTimes(1);
+
+  const body = JSON.parse(fetch.mock.calls[0][1].body);
+
+  expect(body).toMatchObject({
+    extensions: {
+      persistedQuery: {
+        version: 1,
+        sha256Hash: 'hello',
+      },
+    },
+  });
+  const queryString = `query getUser($name: String) {
+  user(name: $name) {
+    id
+    firstName
+    lastName
+  }
+}
+`;
+  expect(hashFn).toBeCalledWith(queryString, queryOperation.query);
+});
+
+it('falls back to a non-persisted query if the hash is falsy', async () => {
+  const expected = {
+    data: {
+      test: true,
+    },
+  };
+
+  fetch.mockResolvedValueOnce({
+    json: () => expected,
+  });
+
+  const hashFn = jest.fn(() => Promise.resolve(''));
+
+  await pipe(
+    fromValue(queryOperation),
+    persistedFetchExchange({ generateHash: hashFn })(exchangeArgs),
+    toPromise
+  );
+
+  expect(fetch).toHaveBeenCalledTimes(1);
+
+  const body = JSON.parse(fetch.mock.calls[0][1].body);
+
+  expect(body).toMatchObject({
+    query:
+      'query getUser($name: String) {\n' +
+      '  user(name: $name) {\n' +
+      '    id\n' +
+      '    firstName\n' +
+      '    lastName\n' +
+      '  }\n' +
+      '}\n',
+    operationName: 'getUser',
+    variables: { name: 'Clara' },
+  });
+});

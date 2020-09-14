@@ -1,5 +1,66 @@
 # @urql/exchange-graphcache
 
+## 3.1.0
+
+### Minor Changes
+
+- Add support for `nodes` fields to the `relayPagination` helper, instead of only supporting the standard `edges`. (See [#897](https://github.com/FormidableLabs/urql/pull/897))
+
+### Patch Changes
+
+- Updated dependencies (See [#947](https://github.com/FormidableLabs/urql/pull/947), [#962](https://github.com/FormidableLabs/urql/pull/962), and [#957](https://github.com/FormidableLabs/urql/pull/957))
+  - @urql/core@1.13.0
+
+## 3.0.2
+
+### Patch Changes
+
+- Add special-case for fetching an introspection result in our schema-checking, this avoids an error when urql-devtools fetches the backend graphql schema, by [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#893](https://github.com/FormidableLabs/urql/pull/893))
+- Mute warning when using built-in GraphQL fields, like `__type`, by [@kitten](https://github.com/kitten) (See [#919](https://github.com/FormidableLabs/urql/pull/919))
+- ⚠️ Fix return type for resolvers to allow data objects to be returned with `__typename` as expected, by [@JoviDeCroock](https://github.com/JoviDeCroock) (See [#927](https://github.com/FormidableLabs/urql/pull/927))
+- Updated dependencies (See [#911](https://github.com/FormidableLabs/urql/pull/911) and [#908](https://github.com/FormidableLabs/urql/pull/908))
+  - @urql/core@1.12.3
+
+## 3.0.1
+
+### Patch Changes
+
+- Add warning for queries that traverse an Operation Root Type (Mutation / Subscription types occuring in a query result), by [@kitten](https://github.com/kitten) (See [#859](https://github.com/FormidableLabs/urql/pull/859))
+- ⚠️ Fix storage implementation not preserving deleted values correctly or erroneously checking optimistically written entries for changes. This is fixed by adding a new default serializer to the `@urql/exchange-graphcache/default-storage` implementation, which will be incompatible with the old one, by [@kitten](https://github.com/kitten) (See [#866](https://github.com/FormidableLabs/urql/pull/866))
+- Replace unnecessary `scheduleTask` polyfill with inline `Promise.resolve().then(fn)` calls, by [@kitten](https://github.com/kitten) (See [#861](https://github.com/FormidableLabs/urql/pull/861))
+- Updated dependencies (See [#860](https://github.com/FormidableLabs/urql/pull/860) and [#861](https://github.com/FormidableLabs/urql/pull/861))
+  - @urql/core@1.12.1
+
+## 3.0.0
+
+This major release comes with a couple of fixes and new **experimental offline support**, which
+we're very excited for! Please give it a try if your application is targeting Offline First!
+
+To migrate to this new major version, check the major breaking changes below. Mainly you will have
+to watch out for `cache.invalidateQuery` which has been removed. Instead you should now invalidate
+individual entities and fields using `cache.invalidate`. [Learn more about this method on our
+docs.](https://formidable.com/open-source/urql/docs/graphcache/custom-updates/#cacheinvalidate)
+
+### Major Changes
+
+- Remove the deprecated `populateExchange` export from `@urql/exchange-graphcache`.
+  If you're using the `populateExchange`, please install the separate `@urql/exchange-populate` package and import it from there, by [@kitten](https://github.com/kitten) (See [#840](https://github.com/FormidableLabs/urql/pull/840))
+- The deprecated `cache.invalidateQuery()` method has been removed. Please migrate over to `cache.invalidate()` instead, which operates on individual fields instead of queries, by [@kitten](https://github.com/kitten) (See [#840](https://github.com/FormidableLabs/urql/pull/840))
+
+### Minor Changes
+
+- Implement experimental Offline Support in Graphcache.
+  [Read more about how to use the Offline Support in our docs.](https://formidable.com/open-source/urql/docs/graphcache/offline/), by [@kitten](https://github.com/kitten) (See [#793](https://github.com/FormidableLabs/urql/pull/793))
+- Issue warnings when an unknown type or field has been included in Graphcache's `opts` configuration to help spot typos.
+  Checks `opts.keys`, `opts.updates`, `opts.resolvers` and `opts.optimistic`. (See [#820](https://github.com/FormidableLabs/urql/pull/820) and [#826](https://github.com/FormidableLabs/urql/pull/826))
+
+### Patch Changes
+
+- ⚠️ Fix resolvers being executed for data even when data is currently written. This behaviour could lead to interference with custom updaters that update fragments or queries, e.g. an updater that was receiving paginated data due to a pagination resolver. We've determined that generally it is undesirable to have any resolvers run during the cache update (writing) process, since it may lead to resolver data being accidentally written to the cache or for resolvers to interfere with custom user updates, by [@olistic](https://github.com/olistic) (See [#812](https://github.com/FormidableLabs/urql/pull/812))
+- Upgrade to a minimum version of wonka@^4.0.14 to work around issues with React Native's minification builds, which use uglify-es and could lead to broken bundles, by [@kitten](https://github.com/kitten) (See [#842](https://github.com/FormidableLabs/urql/pull/842))
+- Updated dependencies (See [#838](https://github.com/FormidableLabs/urql/pull/838) and [#842](https://github.com/FormidableLabs/urql/pull/842))
+  - @urql/core@1.12.0
+
 ## 2.4.2
 
 ### Patch Changes
@@ -255,7 +316,7 @@ There are some breaking changes, if you're using `cache.resolveConnections` or `
 then you now need to use `inspectFields` and `resolveFieldByKey` instead. You may also now make
 use of `cache.keyOfField`. (More info on [#128](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/128))
 
-- ✨ Implement `populateExchange` (eee [#120](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/120))
+- ✨ Implement `populateExchange` (see [#120](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/120))
 - Improve type safety of `invariant` and `warning` (see [#121](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/121))
 - Reduce size of `populateExchange` (see [#122](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/122))
 - Move more code to KVMap (see [#125](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/125))
@@ -312,7 +373,7 @@ so that errors and warnings can be traced more easily.
 
 - Trims down the size by 100 bytes (see [#96](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/96))
 - Include the `/extras` build in the published version (see [#97](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/97))
-- Invariant and warnings will now have an error code associated with a more elabore explanation (see [#99](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/99))
+- Invariant and warnings will now have an error code associated with a more elaborate explanation (see [#99](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/99))
 - Invariant errors will now be included in your production bundle (see [#100](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/100))
 - Fixes the relayPagination helper to correctly return partial results (see [#101](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/101))
 - Add special case to relayPagination for first and last during inwards merge (see [#102](https://github.com/FormidableLabs/urql-exchange-graphcache/pull/102))

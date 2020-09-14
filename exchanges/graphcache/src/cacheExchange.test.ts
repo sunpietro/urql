@@ -1,10 +1,12 @@
 import gql from 'graphql-tag';
+
 import {
   createClient,
   ExchangeIO,
   Operation,
   OperationResult,
 } from '@urql/core';
+
 import {
   Source,
   pipe,
@@ -18,6 +20,8 @@ import {
   publish,
   delay,
 } from 'wonka';
+
+import { minifyIntrospectionQuery } from '@urql/introspection';
 import { cacheExchange } from './cacheExchange';
 
 const queryOne = gql`
@@ -1264,6 +1268,10 @@ describe('custom resolvers', () => {
     pipe(
       cacheExchange({
         resolvers: {
+          Query: {
+            // TS-check
+            author: (_parent, args) => ({ __typename: 'Author', id: args.id }),
+          },
           Author: {
             name: parent => {
               called.push(parent.name);
@@ -1408,8 +1416,10 @@ describe('schema awareness', () => {
 
     pipe(
       cacheExchange({
-        // eslint-disable-next-line
-        schema: require('./test-utils/simple_schema.json'),
+        schema: minifyIntrospectionQuery(
+          // eslint-disable-next-line
+          require('./test-utils/simple_schema.json')
+        ),
       })({ forward, client, dispatchDebug })(ops$),
       tap(result),
       publish

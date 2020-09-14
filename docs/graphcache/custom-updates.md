@@ -5,12 +5,12 @@ order: 3
 
 # Custom Updates
 
-_Graphcache_ will attempt to automatically react to your mutations' and subscriptions' results
-but sometimes this isn't possible. While it will update all normalized entities that it finds in
-those results, it can't for instance tell whether a new item should be appended or removed from a
-list.
+Every time Graphcache sees a result from the API for a `subscription` or a `mutation` it will look at the response and traverse it.
+This process is the same as for queries but instead of starting at the Query root type,
+it will start searching for keyable entities, where an object's `__typename` and `id` or `_id` fields (or a custom keys config)
+are provided, so it can write normalized entities to the cache.
 
-Specifically, a normalized cache can't automatically assume that unrelated links have changed due to
+A normalized cache can't automatically assume that unrelated links have changed due to
 a mutation, since this is server-side specific logic. Instead, we may use the `updates`
 configuration to set up manual updates that react to mutations or subscriptions.
 
@@ -182,11 +182,94 @@ const cache = cacheExchange({
 The above example deletes a `Todo` with a given `id` from the arguments, when `Mutation.deleteTodo`
 is executed. This will cause all queries that reference this `Todo` to automatically update.
 
+## cache.inspectFields
+
+It's possible that you may have to alter multiple parts of the normalized cache data all at once.
+For instance, you may want to see a field that has been called with different arguments, like a listing
+field. The `cache.inspectFields` method was made for this purpose and is able to return all fields
+that the cache has seen on a given type.
+
+In this example we'll alter all fields on `Query.todos`:
+
+```js
+const cache = cacheExchange({
+  updates: {
+    Mutation: {
+      addTodo: (result, args, cache, info) => {
+        // Get all children of query, this can also be Todo if we would be looking for for instance the author subquery
+        const allFields = cache.inspectFields("Query");
+        // Filter these children to the query you like, in our case query { todos }
+        const todoQueries = allFields.filter(x => x.fieldName === "todos");
+
+        todosQueries.forEach(({ arguments }) => {
+          cache.updateQuery(
+            { query: TODOS_QUERY, variables: x.arguments },
+            data => {
+              data.todos.push(result.addTodo);
+              return data;
+            });
+          );
+        })
+      },
+    },
+  },
+});
+```
+
+Let's combine the above example with invalidating fields, imagine the scenario where we add a todo but
+rather than manually pushing it on all the lists we just want to refetch the lists.
+
+```js
+const cache = cacheExchange({
+  updates: {
+    Mutation: {
+      addTodo: (result, args, cache, info) => {
+        const todoQueries = cache.inspectFields('Query').filter(x => x.fieldName === 'todos');
+
+        todosQueries.forEach(({ fieldName, arguments: variables }) => {
+          cache.invalidate('Query', fieldName, variables);
+        });
+      },
+    },
+  },
+});
+```
+
+Now when we come onto a list we'll know that this list needs to be refetched.
+
+### Inspecting a sub-field
+
+We've seeen how to inspect fields for a root-field in the above, but what if your query looks like this:
+
+```
+query {
+  todo(id: "x") {
+    id
+    authors {
+      id
+      name
+    }
+  }
+}
+```
+
+Now we'd need to traverse all the `todos` to find which we need, but there's another solution.
+Rather than use `cache.inspectFields('Query')`, which would give us all queried `todo` fields with their arguments, we can instead provide an object as the argument to `inspectFields` asking for all `Todo` types for a given id.
+
+```js
+cache.inspectFields({ __typename: 'Todo', id: args.id });
+```
+
+Now we'll get all fields for the given `todo` and can freely update the `authors`.
+
 ## Optimistic updates
 
 If we know what result a mutation may return, why wait for the GraphQL API to fulfill our mutations?
 The _Optimistic Updates_ configuration allows us to set up "temporary" results for mutations, which
 will be applied immediately. This is a great solution to reduce the waiting time for the user.
+
+> Note that an optimistic response is meant to be a temporary update to an entity until the server responds to your mutation.
+> This means that what you return here should reflect the shape of what the server will return.
 
 This technique is often used with one-off mutations that are assumed to succeed, like starring a
 repository, or liking a tweet. In such cases it's often desirable to make the interaction feel

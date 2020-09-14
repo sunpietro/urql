@@ -1,6 +1,6 @@
 ---
 title: Server-side Rendering
-order: 2
+order: 3
 ---
 
 # Server-side Rendering
@@ -213,7 +213,7 @@ const Index = () => {
   // ...
 };
 
-export default withUrqlClient(ctx => ({
+export default withUrqlClient((_ssrExchange, ctx) => ({
   // ...add your Client options here
   url: 'http://localhost:3000/graphql',
 }))(Index);
@@ -225,15 +225,26 @@ object or a function that receives the Next.js' `getInitialProps` context.
 
 One added caveat is that these options may not include the `exchanges` option because `next-urql`
 injects the `ssrExchange` automatically at the right location. If you're setting up custom exchanges
-you'll need to instead provide them in a custom `mergeExchanges` function as the second argument:
+you'll need to instead provide them in the `exchanges` property of the returned client object.
 
 ```js
 import { dedupExchange, cacheExchange, fetchExchange } from '@urql/core';
 
 import { withUrqlClient } from 'next-urql';
 
-// Modify this array to include custom exchanges:
-const mergeExchanges = ssrExchange => [dedupExchange, cacheExchange, ssrExchange, fetchExchange];
-
-export default withUrqlClient({ url: 'http://localhost:3000/graphql' }, mergeExchanges)(Index);
+export default withUrqlClient(ssrExchange => ({
+  url: 'http://localhost:3000/graphql',
+  exchanges: [dedupExchange, cacheExchange, ssrExchange, fetchExchange],
+}))(Index);
 ```
+
+Unless the component that is being wrapped already has a `getInitialProps` method, `next-urql` won't add its own SSR logic, which automatically fetches queries during
+server-side rendering. This can be explicitly enabled by passing the `{ ssr: true }` option as a second argument to `withUrqlClient`.
+
+### Resetting the client instance
+
+In rare scenario's you possibly will have to reset the client instance (reset all cache, ...), this is an uncommon scenario
+and we consider it "unsafe" so evaluate this carefully for yourself.
+
+When this does seem like the appropriate solution any component wrapped with `withUrqlClient` will receive the `resetUrqlClient`
+property, when invoked this will create a new top-level client and reset all prior operations.
